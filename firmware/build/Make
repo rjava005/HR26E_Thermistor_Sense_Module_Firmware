@@ -1,0 +1,18 @@
+TARGET = main
+BUILD = build
+SRC = src/main.c
+STARTUP = startup/startup_stm32f4xx.s
+LINKER = linker/stm32f4.ld
+
+CC = arm-none-eabi-gcc
+CFLAGS = -mcpu=cortex-m4 -mthumb -O0 -g -Wall
+LDFLAGS = -T $(LINKER) -nostartfiles
+
+$(BUILD)/$(TARGET).elf: $(SRC) $(STARTUP) | $(BUILD)
+	$(CC) $(CFLAGS) $(SRC) $(STARTUP) $(LDFLAGS) -o $@
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+clean:
+	rm -rf $(BUILD)

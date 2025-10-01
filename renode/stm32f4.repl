@@ -1,0 +1,11 @@
+using sysbus
+
+cpu: CPU.Cortex-M4 @ sysbus
+    cpuType: "cortex-m4"
+
+sysbus CreateMemory 0x20000000 128K  # RAM
+sysbus CreateMemory 0x08000000 1024K # Flash
+
+# Example UART
+uart2: UART.PL011 @ sysbus 0x40004400
+    irq -> cpu@37

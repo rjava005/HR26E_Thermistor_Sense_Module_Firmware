@@ -1,0 +1,13 @@
+using sysbus
+
+mach create "stm32f4"
+
+machine LoadPlatformDescription @renode/stm32f4.repl
+
+# Load ELF
+sysbus LoadELF @firmware/build/main.elf
+
+# Show UART if used
+showAnalyzer uart2
+
+start
