@@ -54,7 +54,7 @@ static void MX_CAN_Init(void);
 
 /* USER CODE END PFP */
 
-/* Private user code ---------------------------------------------------------*/
+/* Private user code --------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 CAN_TxHeaderTypeDef TxHeader;
 CAN_RxHeaderTypeDef RxHeader;
