@@ -1,49 +1,58 @@
 #include "STM32_CAN.h"
 
 static CAN_message_t CAN_outMsg;
-const int analogInput = PA0;
+const int analogInput = PA0;  // ADC pin
+const int onboardLED =  PB2;
 
-STM32_CAN Can(CAN1, ALT);
-// PB8 = RX, PB9 = TX
+STM32_CAN Can(CAN1, ALT);     // PB8 = RX, PB9 = TX
 
+void SendData(uint16_t voltage_mV) {
+  // Pack the 32-bit voltage value into 4 bytes
+  CAN_outMsg.buf[0] = (voltage_mV & 0xFF);
+  CAN_outMsg.buf[1] = ((voltage_mV >> 8) & 0xFF);
+  CAN_outMsg.buf[2] = 'm';
 
-/* this function is credited to the STM32_CAN github page, with minor edits to remove the counter value.  */
-void SendData(int adcValue) 
-{
-  // first 3 bytes are going to be the packed adcValue
-  CAN_outMsg.buf[0] = (unsigned char)(adcValue & 0xFF);
-  CAN_outMsg.buf[1] = (unsigned char)((adcValue >> 8) & 0xFF);
-  CAN_outMsg.buf[2] = (unsigned char)((adcValue >> 16) & 0xFF);
-
-  // just send hello cuz its cute
-  CAN_outMsg.buf[3] = 'H';
-  CAN_outMsg.buf[4] = 'e';
+  CAN_outMsg.buf[3] = 'V';
+  CAN_outMsg.buf[4] = 'o';
   CAN_outMsg.buf[5] = 'l';
-  CAN_outMsg.buf[6] = 'l';
-  CAN_outMsg.buf[7] = 'o';
+  CAN_outMsg.buf[6] = 't';
+  CAN_outMsg.buf[7] = 's';
+
   Can.write(CAN_outMsg);
 }
 
-
 void setup() {
-  // put your setup code here, to run once:
-  pinMode(PB2, OUTPUT);
+  pinMode(onboardLED, OUTPUT);   // Just to have a test pin if needed
+  Serial.begin(115200);   // Serial monitor
+  delay(1000);
+  Serial.println("Starting ADC + CAN test...");
 
-  Serial.begin(115200);
-
-  Can.begin(true);
+  // Initialize CAN at 500 kbps
+  Can.begin(false);
   Can.setBaudRate(500000);
 
-  // no filters for now. not expecting to require filters for a module that only sends data
-  CAN_outMsg.id = (0x067);
+  CAN_outMsg.id = 0x076;
   CAN_outMsg.len = 8;
 
-  // the example put a hardware timer here. save that for later if needed? send thermistor values at a regular hertz
-
-  analogReadResolution(12);
+  analogReadResolution(12); // 12-bit ADC for Blue Pill
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  SendData(analogRead(analogInput));
+  uint16_t adcValue = analogRead(analogInput);
+
+  float voltage = (adcValue * 3.3) / 4095.0;
+  uint16_t voltage_mV = voltage * 1000; 
+
+  Serial.print("ADC: ");
+  Serial.print(adcValue);
+  Serial.print(" Voltage: ");
+  Serial.print(voltage_mV);
+  Serial.println(" mV");
+
+  SendData(voltage_mV);
+
+  // digitalWrite(onboardLED, LOW);
+  // delay(1000);
+  // digitalWrite(onboardLED, HIGH);
+  // delay(1000);
 }
