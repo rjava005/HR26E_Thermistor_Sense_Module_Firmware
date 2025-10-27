@@ -2,6 +2,7 @@
 
 static CAN_message_t CAN_outMsg;
 const int analogInput = PA0;  // ADC pin
+const int onboardLED =  PB2;
 
 STM32_CAN Can(CAN1, ALT);     // PB8 = RX, PB9 = TX
 
@@ -21,13 +22,13 @@ void SendData(uint16_t voltage_mV) {
 }
 
 void setup() {
-  pinMode(PB2, OUTPUT);   // Just to have a test pin if needed
+  pinMode(onboardLED, OUTPUT);   // Just to have a test pin if needed
   Serial.begin(115200);   // Serial monitor
   delay(1000);
   Serial.println("Starting ADC + CAN test...");
 
   // Initialize CAN at 500 kbps
-  Can.begin(true);
+  Can.begin(false);
   Can.setBaudRate(500000);
 
   CAN_outMsg.id = 0x076;
@@ -37,7 +38,6 @@ void setup() {
 }
 
 void loop() {
-
   uint16_t adcValue = analogRead(analogInput);
 
   float voltage = (adcValue * 3.3) / 4095.0;
@@ -51,5 +51,8 @@ void loop() {
 
   SendData(voltage_mV);
 
-  delay(100);
+  // digitalWrite(onboardLED, LOW);
+  // delay(1000);
+  // digitalWrite(onboardLED, HIGH);
+  // delay(1000);
 }
