@@ -27,7 +27,7 @@ void setup() {
   Serial.println("Starting ADC + CAN test...");
 
   // Initialize CAN at 500 kbps
-  Can.begin(true);
+  Can.begin(false);
   Can.setBaudRate(500000);
 
   CAN_outMsg.id = 0x076;
@@ -50,6 +50,4 @@ void loop() {
   Serial.println(" mV");
 
   SendData(voltage_mV);
-
-  delay(100);
 }
