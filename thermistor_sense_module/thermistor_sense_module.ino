@@ -1,53 +1,71 @@
 #include "STM32_CAN.h"
 
-static CAN_message_t CAN_outMsg;
-const int analogInput = PA0;  // ADC pin
+// CAN message structures (visualized in the form of arrays)
+static CAN_message_t CAN_outMsg1;
+static CAN_message_t CAN_outMsg2;
 
-STM32_CAN Can(CAN1, ALT);     // PB8 = RX, PB9 = TX
+const int hertzDelay = 100;  // time to wait between sends
+const int onboardLED = PB2;
+const char subpackID = 'S1';  // choose any ID from S1 - S6
 
-void SendData(uint16_t voltage_mV) {
-  // Pack the 32-bit voltage value into 4 bytes
-  CAN_outMsg.buf[0] = (voltage_mV & 0xFF);
-  CAN_outMsg.buf[1] = ((voltage_mV >> 8) & 0xFF);
-  CAN_outMsg.buf[2] = 'm';
+STM32_CAN Can(CAN1, ALT);  // PB8 = RX, PB9 = TX
 
-  CAN_outMsg.buf[3] = 'V';
-  CAN_outMsg.buf[4] = 'o';
-  CAN_outMsg.buf[5] = 'l';
-  CAN_outMsg.buf[6] = 't';
-  CAN_outMsg.buf[7] = 's';
-
-  Can.write(CAN_outMsg);
-}
+uint8_t muxData1[6] = {10,20,30,40,50,60};
+uint8_t muxData2[6] = {70,80,90,100,110,120};
 
 void setup() {
-  pinMode(PB2, OUTPUT);   // Just to have a test pin if needed
-  Serial.begin(115200);   // Serial monitor
-  delay(1000);
-  Serial.println("Starting ADC + CAN test...");
+  pinMode(onboardLED, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("Starting Multiplexer simulation...");
 
-  // Initialize CAN at 500 kbps
   Can.begin(false);
   Can.setBaudRate(500000);
 
-  CAN_outMsg.id = 0x076;
-  CAN_outMsg.len = 8;
+  // set up CAN id according to subpackID
+  switch(subpackID) {
+    case 'S1': 
+      CAN_outMsg1.id = 0x101; 
+      CAN_outMsg2.id = 0x102; 
+      break; 
+    case 'S2': 
+      CAN_outMsg1.id = 0x201; 
+      CAN_outMsg2.id = 0x202; 
+      break; 
+    case 'S3': 
+      CAN_outMsg1.id = 0x301;
+      CAN_outMsg2.id = 0x302; 
+      break; 
+    case 'S4': 
+      CAN_outMsg1.id = 0x401; 
+      CAN_outMsg2.id = 0x402; 
+      break; 
+    case 'S5': 
+      CAN_outMsg1.id = 0x501; 
+      CAN_outMsg2.id = 0x502; 
+      break; 
+    case 'S6': 
+      CAN_outMsg1.id = 0x601; 
+      CAN_outMsg2.id = 0x602; 
+      break; 
+  }
 
-  analogReadResolution(12); // 12-bit ADC for Blue Pill
+  CAN_outMsg1.len = CAN_outMsg2.len = 6;
+
+  for (int i = 0; i < 6; i++) {
+    CAN_outMsg1.buf[i] = muxData1[i];
+    CAN_outMsg2.buf[i] = muxData2[i];
+  }
+
+  Serial.println("Setup complete. Sending bogus multiplexer values over CAN...");
 }
 
 void loop() {
+  // Toggle LED
+  digitalWrite(onboardLED, !digitalRead(onboardLED));
 
-  uint16_t adcValue = analogRead(analogInput);
+  Can.write(CAN_outMsg1);
+  delay(hertzDelay);
+  Can.write(CAN_outMsg2);
+  delay(hertzDelay);
 
-  float voltage = (adcValue * 3.3) / 4095.0;
-  uint16_t voltage_mV = voltage * 1000; 
-
-  Serial.print("ADC: ");
-  Serial.print(adcValue);
-  Serial.print(" Voltage: ");
-  Serial.print(voltage_mV);
-  Serial.println(" mV");
-
-  SendData(voltage_mV);
 }
