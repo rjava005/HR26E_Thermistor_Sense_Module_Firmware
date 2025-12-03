@@ -1,106 +1,81 @@
 #include "STM32_CAN.h"
 
-// CAN message structures
+// CAN message structures (visualized in the form of arrays)
 static CAN_message_t CAN_outMsg1;
 static CAN_message_t CAN_outMsg2;
 
-// hertz delay constant
-const int hertzDelay = 100;
+const int analogInput = PA1;  // ADC pin
+const int hertzDelay = 100;  // time to wait between sends
+const int onboardLED = PB2;
+const char subpackID = 'S1';  // choose any ID from S1 - S6
+float adcValue = 1;
+float temperature = 0;
 
-/* pin setup 
-* PA0 - PA3 connect to gpio to S0-S3 channel selectors on multiplexer, need to be configured as digital outputs
-* PA4 is the enable bit for the mux (whatever that means)
-*/
-const int analogInput = PA0;  // ADC pin
-const int onboardLED =  PB2;
+STM32_CAN Can(CAN1, ALT);  // PB8 = RX, PB9 = TX
 
-// choose between s1-s6
-const char subpackID = 'S1';
-
-STM32_CAN Can(CAN1, ALT);     // PB8 = RX, PB9 = TX
-
-void SendData(CAN_message_t msg) {
-  // Pack the 32-bit voltage value into 4 bytes
-  // CAN_outMsg.buf[0] = (voltage_mV & 0xFF);
-  // CAN_outMsg.buf[1] = ((voltage_mV >> 8) & 0xFF);
-  // CAN_outMsg.buf[2] = 'm';
-
-  // CAN_outMsg.buf[3] = 'V';
-  // CAN_outMsg.buf[4] = 'o';
-  // CAN_outMsg.buf[5] = 'l';
-  // CAN_outMsg.buf[6] = 't';
-  // CAN_outMsg.buf[7] = 's';
-
-  // Can.write(CAN_outMsg);
-}
+uint8_t muxData1[6] = {10,20,30,40,50,60};
+uint8_t muxData2[6] = {70,80,90,100,110,120};
 
 void setup() {
-  pinMode(onboardLED, OUTPUT);   // Just to have a test pin if needed
+  pinMode(onboardLED, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("Starting Multiplexer simulation...");
 
-  Serial.begin(115200);   // Serial monitor
-  
-  Serial.println("Starting ADC + CAN test...");
-
-  // Initialize CAN at 500 kbps
   Can.begin(false);
   Can.setBaudRate(500000);
 
   // set up CAN id according to subpackID
   switch(subpackID) {
-    case 'S1':
-      CAN_outMsg1.id = '0x1S1';
-      CAN_outMsg2.id = '0x1S2';
-      break;
-    case 'S2':
-      CAN_outMsg1.id = '0x2S1';
-      CAN_outMsg2.id = '0x2S2';
-      break;
-    case 'S3':
-      CAN_outMsg1.id = '0x3S1';
-      CAN_outMsg2.id = '0x3S2';
-      break;    
-    case 'S4':
-      CAN_outMsg1.id = '0x4S1';
-      CAN_outMsg2.id = '0x4S2';
-      break;
-    case 'S5':
-      CAN_outMsg1.id = '0x5S1';
-      CAN_outMsg2.id = '0x5S2';
-      break;
-    case 'S6':
-      CAN_outMsg1.id = '0x6S1';
-      CAN_outMsg2.id = '0x6S2';
-      break;
+    case 'S1': 
+      CAN_outMsg1.id = 0x11; 
+      CAN_outMsg2.id = 0x12; 
+      break; 
+    case 'S2': 
+      CAN_outMsg1.id = 0x21; 
+      CAN_outMsg2.id = 0x22; 
+      break; 
+    case 'S3': 
+      CAN_outMsg1.id = 0x31;
+      CAN_outMsg2.id = 0x32; 
+      break; 
+    case 'S4': 
+      CAN_outMsg1.id = 0x41; 
+      CAN_outMsg2.id = 0x42; 
+      break; 
+    case 'S5': 
+      CAN_outMsg1.id = 0x51; 
+      CAN_outMsg2.id = 0x52; 
+      break; 
+    case 'S6': 
+      CAN_outMsg1.id = 0x61; 
+      CAN_outMsg2.id = 0x62; 
+      break; 
   }
 
-  // each module will output 2 can messages, each with length of 6 bytes, one for each temperature
-  CAN_outMsg1.len = 6;
-  CAN_outMsg2.len = 6;
-
-  // 12-bit ADC for Blue Pill
-  analogReadResolution(12); 
+  CAN_outMsg1.len = CAN_outMsg2.len = 6;
+  Serial.println("Setup complete. Sending bogus multiplexer values over CAN...");
 }
 
 void loop() {
-  uint16_t adcValue = analogRead(analogInput);
+  // Toggle LED
+  digitalWrite(onboardLED, !digitalRead(onboardLED));
 
-  // turn measured voltage into millivolt value
-  float voltage = (adcValue * 3.3) / 4095.0;
-  uint16_t voltage_mV = voltage * 1000; 
-  Serial.print("ADC: ");
-  Serial.print(adcValue);
-  Serial.print(" Voltage: ");
-  Serial.print(voltage_mV);
-  Serial.println(" mV");
+ adcValue = analogRead(analogInput) * (3.3/1023.0);
 
-  // SendData(voltage_mV);
+  temperature = (1.0 / ((1.0/298.15) + (1.0/3435.0) * log(((10000.0 * (3.3 / adcValue)) - 10000.0) / 10000.0))) - 273.15;
+  // temperature = (1/298.15) + (1/3435) * log(10000 * 3.3 / 1.0);
+  //temperature = log(10000.0 * (3.3 / 1.0));
+  for (int i = 0; i < 6; i++) {
+    CAN_outMsg1.buf[i] = (uint8_t)temperature;
+    // CAN_outMsg2.buf[i] = (uint8_t)temperature;
+  }
+  Serial.print("ADC Value: ");
+  Serial.println(adcValue);
+  Serial.print("Temperature: ");
+  Serial.println(temperature);
 
-  // todo: pack all of this into a for loop (?)
-
-  // todo: turn measured millivolt value into a temperature reading
-
-  // todo: package temperature reading into message struct
-
-
+  Can.write(CAN_outMsg1);
+  // Can.write(CAN_outMsg2);
   delay(hertzDelay);
+
 }
